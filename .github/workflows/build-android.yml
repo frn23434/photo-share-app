@@ -13,14 +13,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Show file structure  
+    - name: Find app directory
       run: |
-        echo "=== Root files ==="
-        ls -la
-        echo "=== Looking for gradlew ==="
-        find . -name "gradlew" -type f 2>/dev/null || echo "No gradlew found"
-        echo "=== Android directories ==="
-        find . -name "android" -type d 2>/dev/null || echo "No android dirs found"
+        if [ -d "PhotoShareApp" ]; then
+          echo "APP_DIR=PhotoShareApp" >> $GITHUB_ENV
+          echo "Found PhotoShareApp folder"
+        else
+          echo "APP_DIR=." >> $GITHUB_ENV  
+          echo "Using root directory"
+        fi
+        
+    - name: Show file structure
+      run: |
+        echo "=== Files in ${{ env.APP_DIR }} ==="
+        ls -la ${{ env.APP_DIR }}/
+        echo "=== Looking for android folder ==="
+        ls -la ${{ env.APP_DIR }}/android/ 2>/dev/null || echo "No android folder found"
         
     - name: Setup Java 17
       uses: actions/setup-java@v4
@@ -40,41 +48,29 @@ jobs:
         node-version: '18'
         
     - name: Install dependencies
-      run: npm install
+      working-directory: ${{ env.APP_DIR }}
+      run: npm ci || npm install
         
-    - name: Build APK - find correct android folder
+    - name: Generate android folder if missing
+      working-directory: ${{ env.APP_DIR }}
       run: |
-        # Look for android folder with gradlew
-        if [ -f "./android/gradlew" ]; then
-          echo "Found gradlew in ./android"
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
-        elif [ -f "android/gradlew" ]; then
-          echo "Found gradlew in android"
-          cd android  
-          chmod +x gradlew
-          ./gradlew assembleDebug
+        if [ ! -f "android/gradlew" ]; then
+          echo "Android folder missing - generating it..."
+          npx expo prebuild -p android --non-interactive
+          echo "Android folder generated!"
         else
-          echo "ERROR: No gradlew found in android folder!"
-          echo "Checking what's in android folder:"
-          if [ -d "android" ]; then
-            ls -la android/
-          else
-            echo "No android folder exists at root level"
-          fi
-          exit 1
+          echo "Android folder already exists"
         fi
         
-    - name: Find and upload APK
+    - name: Build APK
+      working-directory: ${{ env.APP_DIR }}
       run: |
-        echo "=== Looking for APK files ==="
-        find . -name "*.apk" -type f 2>/dev/null || echo "No APK found"
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: PhotoShare-APK
-        path: |
-          android/app/build/outputs/apk/debug/app-debug.apk
-          **/app-debug.apk
+        name: PhotoShare-APK-Debug
+        path: ${{ env.APP_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk

@@ -17,18 +17,9 @@ jobs:
       run: |
         if [ -d "PhotoShareApp" ]; then
           echo "APP_DIR=PhotoShareApp" >> $GITHUB_ENV
-          echo "Found PhotoShareApp folder"
         else
           echo "APP_DIR=." >> $GITHUB_ENV  
-          echo "Using root directory"
         fi
-        
-    - name: Show file structure
-      run: |
-        echo "=== Files in ${{ env.APP_DIR }} ==="
-        ls -la ${{ env.APP_DIR }}/
-        echo "=== Looking for android folder ==="
-        ls -la ${{ env.APP_DIR }}/android/ 2>/dev/null || echo "No android folder found"
         
     - name: Setup Java 17
       uses: actions/setup-java@v4
@@ -51,12 +42,45 @@ jobs:
       working-directory: ${{ env.APP_DIR }}
       run: npm ci || npm install
         
-    - name: Generate android folder if missing
+    - name: Create missing assets
+      working-directory: ${{ env.APP_DIR }}
+      run: |
+        # Create assets directory if missing
+        mkdir -p assets
+        
+        # Create adaptive-icon.png if missing (192x192 solid color)
+        if [ ! -f "assets/adaptive-icon.png" ]; then
+          echo "Creating adaptive-icon.png..."
+          convert -size 192x192 xc:"#4285F4" assets/adaptive-icon.png
+        fi
+        
+        # Create icon.png if missing (1024x1024)
+        if [ ! -f "assets/icon.png" ]; then
+          echo "Creating icon.png..."
+          convert -size 1024x1024 xc:"#4285F4" assets/icon.png
+        fi
+        
+        # Create splash-icon.png if missing
+        if [ ! -f "assets/splash-icon.png" ]; then
+          echo "Creating splash-icon.png..."
+          convert -size 1024x1024 xc:"#4285F4" assets/splash-icon.png
+        fi
+        
+        # Create favicon.png if missing
+        if [ ! -f "assets/favicon.png" ]; then
+          echo "Creating favicon.png..."
+          convert -size 48x48 xc:"#4285F4" assets/favicon.png
+        fi
+        
+        echo "Assets ready!"
+        ls -la assets/
+        
+    - name: Generate android folder
       working-directory: ${{ env.APP_DIR }}
       run: |
         if [ ! -f "android/gradlew" ]; then
-          echo "Android folder missing - generating it..."
-          npx expo prebuild -p android --non-interactive
+          echo "Generating android folder..."
+          CI=1 npx expo prebuild -p android --clear
           echo "Android folder generated!"
         else
           echo "Android folder already exists"

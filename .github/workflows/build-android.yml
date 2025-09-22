@@ -3,8 +3,6 @@ name: Build Android APK
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -31,21 +29,17 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: PhotoShareApp/package-lock.json
         
     - name: Install dependencies
       working-directory: PhotoShareApp
-      run: npm ci
-      
-    - name: Make gradlew executable
-      working-directory: PhotoShareApp/android
-      run: chmod +x gradlew
-      
+      run: npm install
+        
     - name: Build APK
       working-directory: PhotoShareApp/android
-      run: ./gradlew assembleDebug
-      
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleDebug
+        
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:

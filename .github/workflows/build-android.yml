@@ -13,6 +13,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Debug what files exist
+      run: |
+        echo "=== Root directory contents ==="
+        ls -la
+        echo "=== Looking for app files ==="
+        find . -name "package.json" -type f
+        find . -name "android" -type d
+        
     - name: Setup Java 17
       uses: actions/setup-java@v4
       with:
@@ -30,18 +38,38 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Install dependencies
-      working-directory: PhotoShareApp
-      run: npm install
-        
-    - name: Build APK
-      working-directory: PhotoShareApp/android
+    - name: Install dependencies (flexible path)
       run: |
+        if [ -d "PhotoShareApp" ]; then
+          cd PhotoShareApp && npm install
+        elif [ -f "package.json" ]; then
+          npm install
+        else
+          PACKAGE_DIR=$(find . -name "package.json" -type f | head -1 | xargs dirname)
+          cd "$PACKAGE_DIR" && npm install
+        fi
+        
+    - name: Build APK (flexible path)
+      run: |
+        if [ -d "PhotoShareApp/android" ]; then
+          cd PhotoShareApp/android
+        elif [ -d "android" ]; then
+          cd android
+        else
+          ANDROID_DIR=$(find . -name "android" -type d | head -1)
+          cd "$ANDROID_DIR"
+        fi
         chmod +x gradlew
         ./gradlew assembleDebug
+        
+    - name: Upload APK
+      run: |
+        APK_PATH=$(find . -name "app-debug.apk" -type f | head -1)
+        mkdir -p apk-output
+        cp "$APK_PATH" apk-output/PhotoShare.apk
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: PhotoShare-APK
-        path: PhotoShareApp/android/app/build/outputs/apk/debug/app-debug.apk
+        path: apk-output/PhotoShare.apk

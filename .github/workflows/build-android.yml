@@ -42,37 +42,41 @@ jobs:
       working-directory: ${{ env.APP_DIR }}
       run: npm ci || npm install
         
-    - name: Create missing assets
+    - name: Create missing assets with Node.js
       working-directory: ${{ env.APP_DIR }}
       run: |
-        # Create assets directory if missing
         mkdir -p assets
         
-        # Create adaptive-icon.png if missing (192x192 solid color)
-        if [ ! -f "assets/adaptive-icon.png" ]; then
-          echo "Creating adaptive-icon.png..."
-          convert -size 192x192 xc:"#4285F4" assets/adaptive-icon.png
-        fi
+        node -e "
+        const fs = require('fs');
         
-        # Create icon.png if missing (1024x1024)
-        if [ ! -f "assets/icon.png" ]; then
-          echo "Creating icon.png..."
-          convert -size 1024x1024 xc:"#4285F4" assets/icon.png
-        fi
+        // Simple 1x1 blue PNG in base64
+        const bluePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9aglUywAAAABJRU5ErkJggg==', 'base64');
         
-        # Create splash-icon.png if missing
-        if [ ! -f "assets/splash-icon.png" ]; then
-          echo "Creating splash-icon.png..."
-          convert -size 1024x1024 xc:"#4285F4" assets/splash-icon.png
-        fi
+        // Create files if they don't exist
+        if (!fs.existsSync('assets/adaptive-icon.png')) {
+          fs.writeFileSync('assets/adaptive-icon.png', bluePng);
+          console.log('Created adaptive-icon.png');
+        }
         
-        # Create favicon.png if missing
-        if [ ! -f "assets/favicon.png" ]; then
-          echo "Creating favicon.png..."
-          convert -size 48x48 xc:"#4285F4" assets/favicon.png
-        fi
+        if (!fs.existsSync('assets/icon.png')) {
+          fs.writeFileSync('assets/icon.png', bluePng);
+          console.log('Created icon.png');
+        }
         
-        echo "Assets ready!"
+        if (!fs.existsSync('assets/splash-icon.png')) {
+          fs.writeFileSync('assets/splash-icon.png', bluePng);
+          console.log('Created splash-icon.png');
+        }
+        
+        if (!fs.existsSync('assets/favicon.png')) {
+          fs.writeFileSync('assets/favicon.png', bluePng);
+          console.log('Created favicon.png');
+        }
+        
+        console.log('All assets ready!');
+        "
+        
         ls -la assets/
         
     - name: Generate android folder
@@ -81,9 +85,6 @@ jobs:
         if [ ! -f "android/gradlew" ]; then
           echo "Generating android folder..."
           CI=1 npx expo prebuild -p android --clear
-          echo "Android folder generated!"
-        else
-          echo "Android folder already exists"
         fi
         
     - name: Build APK

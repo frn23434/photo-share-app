@@ -77,14 +77,12 @@ jobs:
         console.log('All assets ready!');
         "
         
-        ls -la assets/
-        
     - name: Generate android folder
       working-directory: ${{ env.APP_DIR }}
       run: |
         if [ ! -f "android/gradlew" ]; then
           echo "Generating android folder..."
-          CI=1 npx expo prebuild -p android --clear
+          CI=1 npx expo prebuild -p android
         fi
         
     - name: Build APK
